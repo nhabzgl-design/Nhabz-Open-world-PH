@@ -21,16 +21,19 @@ func _capture_world() -> void:
     if hud:
         hud.visible = false
 
-    var camera := scene.get_node_or_null("Player/CameraPivot/Camera3D") as Camera3D
-    if camera == null:
-        push_error("Main camera is missing")
-        quit(1)
-        return
-    camera.global_position = Vector3(34, 27, 48)
-    camera.look_at(Vector3(0, 0, -10), Vector3.UP)
+    # Use a dedicated preview camera outside the moving Player rig.
+    var old_camera := scene.get_node_or_null("Player/CameraPivot/Camera3D")
+    if old_camera:
+        old_camera.current = false
+    var camera := Camera3D.new()
+    camera.name = "PreviewCamera"
+    camera.fov = 58.0
+    scene.add_child(camera)
+    camera.global_position = Vector3(48, 34, 62)
+    camera.look_at(Vector3(0, 1.5, -14), Vector3.UP)
     camera.current = true
 
-    for i in range(8):
+    for i in range(20):
         await process_frame
     await RenderingServer.frame_post_draw
 
@@ -41,5 +44,5 @@ func _capture_world() -> void:
         quit(1)
         return
 
-    print("Saved philippines_world_preview.png")
+    print("Saved philippines_world_preview.png size=", viewport_image.get_size())
     quit(0)
