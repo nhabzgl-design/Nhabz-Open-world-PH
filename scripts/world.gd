@@ -82,54 +82,93 @@ func _build_environment() -> void:
     add_child(sun)
 
 func _build_ground() -> void:
+    # Compact urban district ground plane: no beach/empty countryside in the Manila slice.
     var ground := MeshInstance3D.new()
     var plane := PlaneMesh.new()
-    plane.size = Vector2(220, 220)
+    plane.size = Vector2(150, 150)
     ground.mesh = plane
-    ground.material_override = _mat(Color("#527d43"))
+    ground.material_override = _mat(Color("#77766f"))
     add_child(ground)
-
-    var beach := MeshInstance3D.new()
-    var beach_mesh := PlaneMesh.new()
-    beach_mesh.size = Vector2(220, 18)
-    beach.mesh = beach_mesh
-    beach.position = Vector3(0, 0.02, -92)
-    beach.material_override = _mat(Color("#c8ae7b"))
-    add_child(beach)
-
-    var sea := MeshInstance3D.new()
-    var sea_mesh := PlaneMesh.new()
-    sea_mesh.size = Vector2(220, 45)
-    sea.mesh = sea_mesh
-    sea.position = Vector3(0, -0.02, -123)
-    sea.material_override = _mat(Color("#268eb4"), 0.28, 0.12)
-    add_child(sea)
-
+    # Concrete lots and courtyards around the street grid.
+    for x in [-38.0, 38.0]:
+        for z in [-38.0, 38.0]:
+            _box(self, Vector3(x, 0.025, z), Vector3(34, 0.05, 34), Color("#a9a49a"), "Urban block paving")
+    _box(self, Vector3(0, 0.018, -46), Vector3(150, 0.04, 12), Color("#aaa69c"), "North block pavement")
 func _build_roads() -> void:
-    _box(self, Vector3(0, 0.06, 0), Vector3(15, 0.12, 130), ROAD, "Main Avenue")
-    _box(self, Vector3(0, 0.065, -25), Vector3(112, 0.13, 10), ROAD, "Cross Street")
-
+    # Narrower, connected Manila-style streets with a central avenue and side streets.
+    _box(self, Vector3(0, 0.06, 0), Vector3(14, 0.12, 112), ROAD, "Quiapo Avenue")
+    _box(self, Vector3(0, 0.065, -24), Vector3(112, 0.13, 9), ROAD, "Market Street")
+    _box(self, Vector3(-28, 0.06, 22), Vector3(8, 0.12, 52), ROAD, "West side street")
+    _box(self, Vector3(29, 0.06, 22), Vector3(8, 0.12, 52), ROAD, "East side street")
     for side in [-1.0, 1.0]:
-        _box(self, Vector3(side * 9.0, 0.12, 0), Vector3(2.8, 0.22, 130), SIDEWALK, "Sidewalk")
-        _box(self, Vector3(side * 9.0, 0.24, 0), Vector3(0.18, 0.12, 130), CONCRETE, "Curb")
-    for z in range(-57, 58, 8):
-        _box(self, Vector3(0, 0.135, float(z)), Vector3(0.22, 0.025, 3.8), ASPHALT_LINE, "Center lane marker")
+        _box(self, Vector3(side * 8.7, 0.12, 0), Vector3(3.2, 0.22, 112), SIDEWALK, "Main sidewalk")
+        _box(self, Vector3(side * 7.15, 0.24, 0), Vector3(0.16, 0.12, 112), CONCRETE, "Main curb")
+    for x in [-28.0, 29.0]:
+        for side in [-1.0, 1.0]:
+            _box(self, Vector3(x + side * 5.2, 0.12, 22), Vector3(2.4, 0.22, 52), SIDEWALK, "Side street sidewalk")
+    for z in range(-50, 55, 8):
+        _box(self, Vector3(0, 0.135, float(z)), Vector3(0.18, 0.025, 3.6), ASPHALT_LINE, "Lane marker")
     for x in range(-48, 49, 8):
-        _box(self, Vector3(float(x), 0.14, -25), Vector3(3.8, 0.025, 0.2), ASPHALT_LINE, "Cross lane marker")
-
+        _box(self, Vector3(float(x), 0.14, -24), Vector3(3.5, 0.025, 0.18), ASPHALT_LINE, "Cross street marker")
     for i in range(8):
-        _box(self, Vector3(-7.0 + i * 2.0, 0.16, 8.0), Vector3(1.45, 0.035, 0.22), Color("#eee9dc"), "Pedestrian crossing")
+        _box(self, Vector3(-6.2 + i * 1.75, 0.16, 7.0), Vector3(1.25, 0.035, 0.2), Color("#f1eee5"), "Pedestrian crossing")
+    # Sidewalk tile seams and storm drains.
     for side in [-1.0, 1.0]:
-        for z in range(-48, 50, 16):
-            _box(self, Vector3(side * 10.7, 0.28, float(z)), Vector3(0.16, 0.5, 0.16), Color("#d8d1bd"), "Street bollard")
-
+        for z in range(-52, 55, 3):
+            _box(self, Vector3(side * 8.7, 0.245, float(z)), Vector3(3.0, 0.025, 2.85), Color("#c5c0b5"), "Sidewalk tile")
+        for z in [-42.0, -12.0, 18.0, 48.0]:
+            _box(self, Vector3(side * 10.35, 0.26, z), Vector3(0.42, 0.035, 1.2), Color("#666c6e"), "Drain cover")
 func _build_city_blocks() -> void:
-    _make_shop(Vector3(-17, 0, -14))
-    _make_public_building(Vector3(17, 0, -18))
-    _make_home(Vector3(-19, 0, 15))
-    _make_home(Vector3(20, 0, 14))
+    # A small Quiapo-inspired district: market frontage, civic plaza and church landmark.
+    _make_shop(Vector3(-18, 0, -13))
+    _make_public_building(Vector3(19, 0, -18))
+    _make_home(Vector3(-20, 0, 17))
+    _make_home(Vector3(20, 0, 17))
+    _make_small_store(Vector3(-31, 0, -29), Color("#d9c39b"), Color("#28728b"), "PANADERIA")
+    _make_small_store(Vector3(31, 0, -2), Color("#e5d6c2"), Color("#a34b3d"), "BOTIKA")
+    _make_small_store(Vector3(-31, 0, 28), Color("#d6c7ad"), Color("#28704e"), "TALIPAPA")
+    _make_church_landmark(Vector3(0, 0, -48))
+    _make_market_stalls()
     _make_skyline()
 
+func _make_church_landmark(pos: Vector3) -> void:
+    var root := Node3D.new()
+    root.position = pos
+    add_child(root)
+    var stone := Color("#d7c7a8")
+    var trim := Color("#eee2c8")
+    _box(root, Vector3(0, 5.2, 0), Vector3(22, 10.4, 16), stone, "Church nave")
+    _box(root, Vector3(0, 10.55, 0), Vector3(23, 0.55, 17), trim, "Church cornice")
+    _box(root, Vector3(0, 2.0, 8.1), Vector3(7.0, 4.0, 0.35), Color("#594333"), "Church main doors")
+    for x in [-8.0, -4.0, 4.0, 8.0]:
+        _cylinder(root, Vector3(x, 4.9, 8.25), 0.62, 9.2, trim, 16)
+        _cylinder(root, Vector3(x, 9.6, 8.25), 0.82, 0.35, Color("#b79b72"), 16)
+    for x in [-7.0, 7.0]:
+        _box(root, Vector3(x, 13.0, 0), Vector3(4.0, 5.0, 4.0), stone, "Church bell tower")
+        _box(root, Vector3(x, 15.7, 0), Vector3(4.5, 0.35, 4.5), trim, "Tower cornice")
+        var spire := _cylinder(root, Vector3(x, 17.3, 0), 1.6, 3.2, Color("#8b765a"), 12)
+    var pediment := MeshInstance3D.new()
+    var pyramid := PrismMesh.new()
+    pyramid.size = Vector3(12, 3.5, 0.7)
+    pediment.mesh = pyramid
+    pediment.position = Vector3(0, 12.2, 8.2)
+    pediment.material_override = _mat(trim)
+    root.add_child(pediment)
+    _box(root, Vector3(0, 0.16, 13), Vector3(34, 0.32, 24), Color("#bdb5a6"), "Church plaza")
+    var marker := Label3D.new()
+    marker.text = "PLAZA"
+    marker.font_size = 38
+    marker.position = Vector3(0, 2.1, 15)
+    marker.modulate = Color("#fff4d8")
+    root.add_child(marker)
+
+func _make_market_stalls() -> void:
+    for i in range(5):
+        var x := -25.0 + float(i) * 2.6
+        _box(self, Vector3(x, 1.15, -5.0), Vector3(2.25, 1.6, 2.0), [Color("#b85c43"), Color("#d4a64b"), Color("#648b62"), Color("#477c9c"), Color("#a66b9a")][i], "Market stall counter")
+        _box(self, Vector3(x, 2.15, -5.0), Vector3(2.45, 0.16, 2.2), Color("#e7d3ad"), "Market stall canopy")
+        for crate in range(2):
+            _box(self, Vector3(x - 0.45 + float(crate) * 0.9, 1.9, -4.0), Vector3(0.65, 0.42, 0.55), Color("#d5a44e"), "Produce basket")
 func _make_shop(pos: Vector3) -> void:
     var root := Node3D.new()
     root.position = pos
@@ -192,9 +231,11 @@ func _make_skyline() -> void:
 
 func _build_vehicles() -> void:
     _make_jeepney(Vector3(3.7, 0, -8), 0.0)
+    _make_jeepney(Vector3(-3.8, 0, 34), PI)
     _make_tricycle(Vector3(-3.5, 0, -31), PI / 2.0)
+    _make_tricycle(Vector3(24.0, 0, 8), -PI / 2.0)
     _make_car(Vector3(4.0, 0, -43), Color("#e9e8e0"))
-
+    _make_car(Vector3(-4.0, 0, 45), Color("#b63f35"))
 func _wheel(parent: Node3D, pos: Vector3, radius: float = 0.52) -> void:
     var wheel := _cylinder(parent, pos, radius, 0.28, Color("#202329"), 16)
     wheel.rotation.z = PI / 2.0
@@ -267,10 +308,12 @@ func _make_palm(pos: Vector3) -> void:
     add_child(crown)
 
 func _build_npcs() -> void:
-    var outfits := [Color("#d94b3d"), Color("#2464a4"), Color("#e6bd43"), Color("#e8e4d9"), Color("#3d8054"), Color("#9b5c9d")]
-    for i in range(6):
-        _make_person(Vector3(-7.5 + float(i) * 2.8, 0, -1.0 - float(i % 2) * 3.0), outfits[i], i)
-
+    var outfits := [Color("#d94b3d"), Color("#2464a4"), Color("#e6bd43"), Color("#e8e4d9"), Color("#3d8054"), Color("#9b5c9d"), Color("#b66b3e"), Color("#42515f"), Color("#d48c9a"), Color("#557c9b"), Color("#8c704b"), Color("#65734c")]
+    for i in range(12):
+        var pos := Vector3(-6.5 + float(i % 6) * 2.5, 0, -1.0 - float(i / 6) * 3.2)
+        _make_person(pos, outfits[i], i)
+    for i in range(5):
+        _make_person(Vector3(-26.0 + float(i) * 2.6, 0, -9.0), outfits[(i + 4) % outfits.size()], i + 12)
 func _make_person(pos: Vector3, shirt_color: Color, variant: int) -> void:
     var root := Node3D.new()
     root.position = pos
