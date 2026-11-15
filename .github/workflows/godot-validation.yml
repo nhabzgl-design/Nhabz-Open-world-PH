@@ -28,3 +28,18 @@ jobs:
 
       - name: Launch main scene briefly
         run: godot --headless --path . --quit-after 3
+
+      - name: Install virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Capture actual Character Creator screen
+        run: xvfb-run -a godot --path . --script tools/capture_character_creator.gd
+
+      - name: Upload Character Creator preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: character-creator-preview
+          path: character_creator_preview.png
+          if-no-files-found: error
