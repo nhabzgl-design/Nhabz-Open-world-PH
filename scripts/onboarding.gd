@@ -188,7 +188,6 @@ func _save_character() -> void:
     if err != OK:
         _message("Hindi ma-save ang character. Subukan muli.", true)
         return
-    _apply_avatar()
     _enter_world()
 
 func _apply_avatar() -> void:
