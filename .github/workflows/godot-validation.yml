@@ -43,3 +43,13 @@ jobs:
           name: character-creator-preview
           path: character_creator_preview.png
           if-no-files-found: error
+
+      - name: Capture actual 3D world scene
+        run: xvfb-run -a godot --path . --script tools/capture_world_preview.gd
+
+      - name: Upload 3D world preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: philippines-world-preview
+          path: philippines_world_preview.png
+          if-no-files-found: error
