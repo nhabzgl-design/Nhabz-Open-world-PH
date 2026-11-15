@@ -15,6 +15,8 @@ func _ready() -> void:
     _build_vehicles()
     _build_trees()
     _build_npcs()
+    _build_street_details()
+    _build_building_details()
     _build_welcome_label()
 
 func _mat(color: Color, roughness: float = 0.82, metallic: float = 0.0) -> StandardMaterial3D:
@@ -62,19 +64,19 @@ func _build_environment() -> void:
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
     environment.ambient_light_color = Color("#d7e7ff")
-    environment.ambient_light_energy = 0.9
+    environment.ambient_light_energy = 0.62
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    environment.tonemap_exposure = 1.1
+    environment.tonemap_exposure = 0.92
     environment.fog_enabled = true
     environment.fog_light_color = Color("#c4d9e8")
-    environment.fog_density = 0.0018
+    environment.fog_density = 0.0009
     world.environment = environment
     add_child(world)
 
     var sun := DirectionalLight3D.new()
     sun.rotation_degrees = Vector3(-48, -32, 0)
     sun.light_color = Color("#fff1d6")
-    sun.light_energy = 1.35
+    sun.light_energy = 1.05
     sun.shadow_enabled = true
     sun.directional_shadow_max_distance = 90.0
     add_child(sun)
@@ -84,7 +86,7 @@ func _build_ground() -> void:
     var plane := PlaneMesh.new()
     plane.size = Vector2(220, 220)
     ground.mesh = plane
-    ground.material_override = _mat(Color("#6e9e55"))
+    ground.material_override = _mat(Color("#527d43"))
     add_child(ground)
 
     var beach := MeshInstance3D.new()
@@ -92,7 +94,7 @@ func _build_ground() -> void:
     beach_mesh.size = Vector2(220, 18)
     beach.mesh = beach_mesh
     beach.position = Vector3(0, 0.02, -92)
-    beach.material_override = _mat(Color("#d9c18a"))
+    beach.material_override = _mat(Color("#c8ae7b"))
     add_child(beach)
 
     var sea := MeshInstance3D.new()
@@ -299,3 +301,85 @@ func _build_welcome_label() -> void:
     label.font_size = 48
     label.modulate = Color("#fff0c8")
     add_child(label)
+
+
+func _build_street_details() -> void:
+    # Sidewalk paving, drains and street furniture make the street read as a lived-in place.
+    for side in [-1.0, 1.0]:
+        for z in range(-58, 60, 4):
+            _box(self, Vector3(side * 9.0, 0.245, float(z)), Vector3(2.55, 0.025, 3.82), Color("#c8c2b5"), "Sidewalk paving slab")
+            _box(self, Vector3(side * 10.45, 0.255, float(z) + 1.7), Vector3(0.42, 0.035, 0.18), Color("#777b78"), "Drain grate")
+        for z in [-42.0, -12.0, 18.0, 48.0]:
+            _make_street_lamp(Vector3(side * 11.2, 0, z))
+        _make_power_pole(Vector3(side * 14.0, 0, -6.0 if side < 0 else 22.0))
+    # Painted curb sections and a small public transport stop.
+    for z in range(-50, 55, 10):
+        _box(self, Vector3(-10.7, 0.32, float(z)), Vector3(0.18, 0.12, 4.2), Color("#f1eee2"), "Curb paint")
+    _box(self, Vector3(-13.0, 1.55, -34.0), Vector3(4.0, 0.12, 2.0), Color("#23618a"), "Jeepney stop roof")
+    for x in [-14.6, -11.4]:
+        _box(self, Vector3(x, 0.85, -34.0), Vector3(0.12, 1.4, 0.12), Color("#4c5357"), "Jeepney stop post")
+    _box(self, Vector3(-13.0, 0.48, -32.9), Vector3(3.0, 0.16, 0.5), Color("#8a6448"), "Waiting bench")
+    var stop_sign := Label3D.new()
+    stop_sign.text = "SAKAYAN"
+    stop_sign.font_size = 30
+    stop_sign.position = Vector3(-13.0, 2.0, -32.9)
+    stop_sign.modulate = Color("#fff4d8")
+    add_child(stop_sign)
+
+func _make_street_lamp(pos: Vector3) -> void:
+    _cylinder(self, pos + Vector3(0, 3.0, 0), 0.09, 6.0, Color("#444b50"), 10)
+    _box(self, pos + Vector3(0, 5.95, -0.55), Vector3(0.12, 0.12, 1.2), Color("#444b50"), "Lamp arm")
+    var lamp := _box(self, pos + Vector3(0, 5.85, -1.05), Vector3(0.55, 0.16, 0.42), Color("#f4e7b5"), "Street light")
+    lamp.material_override.emission_enabled = true
+    lamp.material_override.emission = Color("#e6d49a")
+    lamp.material_override.emission_energy_multiplier = 0.18
+
+func _make_power_pole(pos: Vector3) -> void:
+    _cylinder(self, pos + Vector3(0, 5.0, 0), 0.16, 10.0, Color("#745a43"), 8)
+    _box(self, pos + Vector3(0, 8.4, 0), Vector3(2.2, 0.13, 0.16), Color("#6b5746"), "Power crossarm")
+    for x in [-0.8, 0.0, 0.8]:
+        _cylinder(self, pos + Vector3(x, 8.75, 0), 0.07, 0.55, Color("#ded8c8"), 8)
+    _wire_between(pos + Vector3(-0.8, 8.9, 0), pos + Vector3(0.8, 8.9, -26.0))
+    _wire_between(pos + Vector3(0.0, 8.9, 0), pos + Vector3(0.0, 8.9, -26.0))
+    _wire_between(pos + Vector3(0.8, 8.9, 0), pos + Vector3(-0.8, 8.9, -26.0))
+
+func _wire_between(a: Vector3, b: Vector3) -> void:
+    var delta := b - a
+    var wire := _cylinder(self, (a + b) * 0.5, 0.025, delta.length(), Color("#252c32"), 6)
+    wire.look_at(b, Vector3.UP)
+    wire.rotate_object_local(Vector3.RIGHT, PI / 2.0)
+
+func _build_building_details() -> void:
+    # Add layered trim, awnings, window frames and small details to the existing buildings.
+    for pos in [Vector3(-19, 0, 15), Vector3(20, 0, 14)]:
+        _box(self, pos + Vector3(0, 2.1, 3.62), Vector3(8.1, 0.16, 0.22), Color("#eee5d4"), "House front lintel")
+        _box(self, pos + Vector3(0, 0.55, 4.2), Vector3(8.5, 0.12, 1.0), Color("#9b8a72"), "House front step")
+        for x in [-2.8, 2.8]:
+            _box(self, pos + Vector3(x, 2.35, 3.68), Vector3(0.12, 1.8, 0.14), Color("#f6ebd9"), "Window trim")
+    # Market crates and colorful awning beside the sari-sari store.
+    for i in range(4):
+        var crate_color := [Color("#c65c36"), Color("#d9ad42"), Color("#4e8955"), Color("#4779a4")][i]
+        _box(self, Vector3(-22.0 + float(i) * 1.05, 0.62, -8.2), Vector3(0.85, 1.0, 0.8), crate_color, "Market produce crate")
+    _box(self, Vector3(-17.0, 4.0, -8.9), Vector3(11.8, 0.18, 1.0), Color("#e6a94c"), "Store awning")
+    for x in [-21.5, -17.0, -12.5]:
+        _box(self, Vector3(x, 3.45, -8.9), Vector3(0.1, 1.1, 0.1), Color("#76583f"), "Awning support")
+    # Additional low-rise storefronts to avoid a lonely isolated block.
+    _make_small_store(Vector3(-29, 0, -28), Color("#d9c39b"), Color("#28728b"), "PANADERIA")
+    _make_small_store(Vector3(30, 0, -2), Color("#e5d6c2"), Color("#a34b3d"), "BOTIKA")
+
+func _make_small_store(pos: Vector3, wall: Color, sign_color: Color, title_text: String) -> void:
+    var root := Node3D.new()
+    root.position = pos
+    add_child(root)
+    _box(root, Vector3(0, 2.2, 0), Vector3(9.0, 4.4, 7.0), wall, "Neighborhood shop")
+    _box(root, Vector3(0, 4.55, 0), Vector3(9.4, 0.28, 7.4), Color("#8c4939"), "Shop roof edge")
+    _box(root, Vector3(0, 3.5, 3.58), Vector3(7.2, 0.72, 0.15), sign_color, "Shop sign")
+    var sign := Label3D.new()
+    sign.text = title_text
+    sign.font_size = 36
+    sign.position = Vector3(0, 3.46, 3.72)
+    sign.modulate = Color("#fff1d8")
+    root.add_child(sign)
+    _box(root, Vector3(-2.1, 1.65, 3.6), Vector3(1.45, 2.4, 0.16), Color("#68452f"), "Shop door")
+    _box(root, Vector3(1.4, 2.0, 3.61), Vector3(3.3, 1.55, 0.12), GLASS, "Shop display window")
+    _box(root, Vector3(0, 0.16, 0), Vector3(9.4, 0.32, 7.4), CONCRETE, "Shop foundation")
