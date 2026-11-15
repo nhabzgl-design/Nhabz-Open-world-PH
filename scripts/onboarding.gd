@@ -11,6 +11,8 @@ var hair_picker: OptionButton
 var outfit_picker: OptionButton
 var status_label: Label
 var content: VBoxContainer
+var preview_root: Node3D
+var preview_avatar: Node3D
 
 func _ready() -> void:
     layer = 20
@@ -23,7 +25,7 @@ func _ready() -> void:
 
 func _build_shell() -> void:
     var backdrop := ColorRect.new()
-    backdrop.color = Color(0.035, 0.055, 0.085, 0.97)
+    backdrop.color = Color(0.025, 0.04, 0.065, 0.98)
     backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     add_child(backdrop)
 
@@ -32,13 +34,13 @@ func _build_shell() -> void:
     add_child(center)
 
     var panel := PanelContainer.new()
-    panel.custom_minimum_size = Vector2(320, 500)
+    panel.custom_minimum_size = Vector2(340, 560)
     panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
     var style := StyleBoxFlat.new()
-    style.bg_color = Color(0.08, 0.11, 0.16, 1)
+    style.bg_color = Color(0.065, 0.09, 0.13, 1)
     style.set_corner_radius_all(22)
-    style.set_content_margin_all(22)
+    style.set_content_margin_all(20)
     panel.add_theme_stylebox_override("panel", style)
     center.add_child(panel)
 
@@ -47,13 +49,15 @@ func _build_shell() -> void:
     panel.add_child(scroll)
     content = VBoxContainer.new()
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    content.add_theme_constant_override("separation", 12)
+    content.add_theme_constant_override("separation", 11)
     scroll.add_child(content)
 
 func _clear_content() -> void:
     for child in content.get_children():
         child.queue_free()
     status_label = null
+    preview_root = null
+    preview_avatar = null
 
 func _heading(subtitle: String) -> void:
     var title := Label.new()
@@ -94,7 +98,7 @@ func _message(message: String, warning := false) -> void:
 func _button(caption: String, callback: Callable) -> void:
     var button := Button.new()
     button.text = caption
-    button.custom_minimum_size.y = 48
+    button.custom_minimum_size.y = 49
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.add_theme_font_size_override("font_size", 17)
     button.pressed.connect(callback)
@@ -105,10 +109,10 @@ func _show_register() -> void:
     _heading("Gumawa ng account")
     username_input = _field("Username", "Hal. Nhabz")
     email_input = _field("Email", "you@example.com")
-    password_input = _field("Password", "Gumawa ng password", true)
+    password_input = _field("Password", "Gumawa ng password (6+ characters)", true)
     _button("MAG-REGISTER", _register_account)
     _button("May account na? Mag-login", _show_login)
-    _message("Prototype muna: naka-save ang account sa device na ito. Hindi pa cloud account.")
+    _message("Prototype account: sa device na ito lang naka-save. Hindi pa cloud account.")
 
 func _show_login() -> void:
     _clear_content()
@@ -128,6 +132,7 @@ func _register_account() -> void:
         return
     data.set_value("account", "username", username)
     data.set_value("account", "email", email)
+    # Local prototype only. Replace with a secure server-side auth provider before release.
     data.set_value("account", "password_hash", password.sha256_text())
     data.set_value("profile", "has_character", false)
     var err := data.save(SAVE_PATH)
@@ -151,16 +156,77 @@ func _show_creator() -> void:
     _clear_content()
     _heading("Gumawa ng character")
     var intro := Label.new()
-    intro.text = "Piliin ang itsura ng avatar mo. Ito ang gagamitin mong character sa laro."
+    intro.text = "I-preview ang avatar habang pinipili ang itsura nito."
     intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     content.add_child(intro)
+
+    _create_preview()
     character_name_input = _field("Pangalan ng character", "Hal. Nhabz")
     skin_picker = _picker("Kulay ng balat", ["Morena", "Kayumanggi", "Maputi"])
     hair_picker = _picker("Estilo ng buhok", ["Maikli", "Mahaba", "Kulot"])
     outfit_picker = _picker("Damit", ["Casual", "Streetwear", "Pang-araw-araw"])
+    skin_picker.item_selected.connect(_refresh_preview)
+    hair_picker.item_selected.connect(_refresh_preview)
+    outfit_picker.item_selected.connect(_refresh_preview)
+    _refresh_preview()
     _button("I-SAVE ANG CHARACTER", _save_character)
-    _message("Maaari pa itong baguhin sa susunod na update.")
+    _message("Prototype preview: maaari pang dagdagan ang mukha, damit at body options.")
+
+func _create_preview() -> void:
+    var frame := PanelContainer.new()
+    frame.custom_minimum_size = Vector2(0, 280)
+    var frame_style := StyleBoxFlat.new()
+    frame_style.bg_color = Color(0.035, 0.055, 0.085, 1)
+    frame_style.set_corner_radius_all(16)
+    frame.add_theme_stylebox_override("panel", frame_style)
+    content.add_child(frame)
+
+    var view := SubViewportContainer.new()
+    view.stretch = true
+    view.custom_minimum_size = Vector2(0, 280)
+    view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    frame.add_child(view)
+
+    var viewport := SubViewport.new()
+    viewport.size = Vector2i(480, 360)
+    viewport.own_world_3d = true
+    viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    view.add_child(viewport)
+
+    var stage := Node3D.new()
+    viewport.add_child(stage)
+    preview_root = stage
+
+    var camera := Camera3D.new()
+    camera.position = Vector3(0, 1.45, 3.9)
+    camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
+    camera.fov = 38
+    stage.add_child(camera)
+    camera.current = true
+
+    var key_light := DirectionalLight3D.new()
+    key_light.rotation_degrees = Vector3(-28, -25, 0)
+    key_light.light_energy = 1.25
+    stage.add_child(key_light)
+    var fill_light := OmniLight3D.new()
+    fill_light.position = Vector3(-2, 2, 2)
+    fill_light.light_energy = 0.55
+    fill_light.omni_range = 7
+    stage.add_child(fill_light)
+
+    var floor_mesh := MeshInstance3D.new()
+    var floor := CylinderMesh.new()
+    floor.top_radius = 1.35
+    floor.bottom_radius = 1.35
+    floor.height = 0.08
+    floor_mesh.mesh = floor
+    floor_mesh.position.y = -0.06
+    var floor_mat := StandardMaterial3D.new()
+    floor_mat.albedo_color = Color(0.12, 0.18, 0.24)
+    floor_mat.roughness = 0.9
+    floor_mesh.material_override = floor_mat
+    stage.add_child(floor_mesh)
 
 func _picker(caption: String, choices: Array[String]) -> OptionButton:
     var label := Label.new()
@@ -173,6 +239,18 @@ func _picker(caption: String, choices: Array[String]) -> OptionButton:
         picker.add_item(choice)
     content.add_child(picker)
     return picker
+
+func _refresh_preview(_index: int = 0) -> void:
+    if preview_root == null or skin_picker == null:
+        return
+    if preview_avatar != null:
+        preview_avatar.queue_free()
+    preview_avatar = _build_avatar(
+        str(skin_picker.get_item_text(skin_picker.selected)),
+        str(hair_picker.get_item_text(hair_picker.selected)),
+        str(outfit_picker.get_item_text(outfit_picker.selected))
+    )
+    preview_root.add_child(preview_avatar)
 
 func _save_character() -> void:
     var character_name := character_name_input.text.strip_edges()
@@ -197,53 +275,83 @@ func _apply_avatar() -> void:
     var old_visual := player.get_node_or_null("Visual")
     if old_visual:
         old_visual.visible = false
-
-    var avatar := player.get_node_or_null("SavedAvatar")
-    if avatar:
-        avatar.queue_free()
-    avatar = Node3D.new()
+    var old_avatar := player.get_node_or_null("SavedAvatar")
+    if old_avatar:
+        old_avatar.queue_free()
+    var avatar := _build_avatar(
+        str(data.get_value("profile", "skin", "Morena")),
+        str(data.get_value("profile", "hair", "Maikli")),
+        str(data.get_value("profile", "outfit", "Casual"))
+    )
     avatar.name = "SavedAvatar"
     player.add_child(avatar)
 
-    var skin_name := str(data.get_value("profile", "skin", "Morena"))
+func _build_avatar(skin_name: String, hair_name: String, outfit_name: String) -> Node3D:
+    var avatar := Node3D.new()
     var skin_color := Color(0.55, 0.32, 0.20)
     if skin_name == "Kayumanggi":
         skin_color = Color(0.70, 0.46, 0.31)
     elif skin_name == "Maputi":
         skin_color = Color(0.86, 0.66, 0.52)
 
-    var outfit_name := str(data.get_value("profile", "outfit", "Casual"))
     var shirt_color := Color(0.12, 0.38, 0.72)
+    var pants_color := Color(0.10, 0.13, 0.19)
     if outfit_name == "Streetwear":
-        shirt_color = Color(0.22, 0.18, 0.32)
+        shirt_color = Color(0.24, 0.18, 0.36)
+        pants_color = Color(0.08, 0.08, 0.12)
     elif outfit_name == "Pang-araw-araw":
-        shirt_color = Color(0.20, 0.48, 0.30)
+        shirt_color = Color(0.18, 0.43, 0.27)
+        pants_color = Color(0.30, 0.23, 0.16)
 
-    _add_avatar_part(avatar, "Torso", BoxMesh.new(), Vector3(0, 0.95, 0), Vector3(0.62, 0.72, 0.34), shirt_color)
-    _add_avatar_part(avatar, "Head", SphereMesh.new(), Vector3(0, 1.55, 0), Vector3(0.38, 0.42, 0.36), skin_color)
-    _add_avatar_part(avatar, "LeftLeg", BoxMesh.new(), Vector3(-0.16, 0.38, 0), Vector3(0.22, 0.62, 0.25), Color(0.12, 0.16, 0.22))
-    _add_avatar_part(avatar, "RightLeg", BoxMesh.new(), Vector3(0.16, 0.38, 0), Vector3(0.22, 0.62, 0.25), Color(0.12, 0.16, 0.22))
-    _add_avatar_part(avatar, "LeftArm", BoxMesh.new(), Vector3(-0.42, 0.98, 0), Vector3(0.18, 0.68, 0.22), skin_color)
-    _add_avatar_part(avatar, "RightArm", BoxMesh.new(), Vector3(0.42, 0.98, 0), Vector3(0.18, 0.68, 0.22), skin_color)
+    # Shoes, legs, torso and arms are separate meshes so the avatar reads as a person.
+    _add_part(avatar, "LeftShoe", BoxMesh.new(), Vector3(-0.16, 0.08, 0.04), Vector3(0.25, 0.15, 0.38), Color(0.035, 0.04, 0.05))
+    _add_part(avatar, "RightShoe", BoxMesh.new(), Vector3(0.16, 0.08, 0.04), Vector3(0.25, 0.15, 0.38), Color(0.035, 0.04, 0.05))
+    _add_part(avatar, "LeftLeg", CapsuleMesh.new(), Vector3(-0.16, 0.43, 0), Vector3(0.14, 0.40, 0.15), pants_color)
+    _add_part(avatar, "RightLeg", CapsuleMesh.new(), Vector3(0.16, 0.43, 0), Vector3(0.14, 0.40, 0.15), pants_color)
+    _add_part(avatar, "Torso", CapsuleMesh.new(), Vector3(0, 1.02, 0), Vector3(0.32, 0.40, 0.19), shirt_color)
+    _add_part(avatar, "Neck", CylinderMesh.new(), Vector3(0, 1.43, 0), Vector3(0.095, 0.12, 0.095), skin_color)
+    _add_part(avatar, "Head", SphereMesh.new(), Vector3(0, 1.68, 0), Vector3(0.23, 0.28, 0.22), skin_color)
+    _add_part(avatar, "LeftEar", SphereMesh.new(), Vector3(-0.225, 1.67, 0), Vector3(0.055, 0.075, 0.045), skin_color)
+    _add_part(avatar, "RightEar", SphereMesh.new(), Vector3(0.225, 1.67, 0), Vector3(0.055, 0.075, 0.045), skin_color)
+    _add_part(avatar, "LeftArm", CapsuleMesh.new(), Vector3(-0.39, 1.02, 0), Vector3(0.105, 0.34, 0.11), shirt_color, Vector3(0, 0, -8))
+    _add_part(avatar, "RightArm", CapsuleMesh.new(), Vector3(0.39, 1.02, 0), Vector3(0.105, 0.34, 0.11), shirt_color, Vector3(0, 0, 8))
+    _add_part(avatar, "LeftHand", SphereMesh.new(), Vector3(-0.42, 0.68, 0), Vector3(0.085, 0.10, 0.08), skin_color)
+    _add_part(avatar, "RightHand", SphereMesh.new(), Vector3(0.42, 0.68, 0), Vector3(0.085, 0.10, 0.08), skin_color)
 
-    var hair_name := str(data.get_value("profile", "hair", "Maikli"))
-    var hair_mesh := SphereMesh.new()
-    var hair_scale := Vector3(0.40, 0.18, 0.38)
+    # Face details are placed on the front (+Z) side of the head.
+    var eye_color := Color(0.035, 0.025, 0.02)
+    _add_part(avatar, "LeftEye", SphereMesh.new(), Vector3(-0.085, 1.72, 0.194), Vector3(0.025, 0.032, 0.018), eye_color)
+    _add_part(avatar, "RightEye", SphereMesh.new(), Vector3(0.085, 1.72, 0.194), Vector3(0.025, 0.032, 0.018), eye_color)
+    _add_part(avatar, "Nose", SphereMesh.new(), Vector3(0, 1.65, 0.215), Vector3(0.035, 0.045, 0.035), skin_color)
+    _add_part(avatar, "HairCap", SphereMesh.new(), Vector3(0, 1.88, -0.005), Vector3(0.245, 0.13, 0.235), Color(0.055, 0.035, 0.025))
+
     if hair_name == "Mahaba":
-        hair_scale = Vector3(0.43, 0.35, 0.40)
+        _add_part(avatar, "LongHairBack", CapsuleMesh.new(), Vector3(0, 1.62, -0.16), Vector3(0.20, 0.30, 0.12), Color(0.055, 0.035, 0.025))
+        _add_part(avatar, "LongHairLeft", SphereMesh.new(), Vector3(-0.205, 1.62, -0.02), Vector3(0.075, 0.25, 0.10), Color(0.055, 0.035, 0.025))
+        _add_part(avatar, "LongHairRight", SphereMesh.new(), Vector3(0.205, 1.62, -0.02), Vector3(0.075, 0.25, 0.10), Color(0.055, 0.035, 0.025))
     elif hair_name == "Kulot":
-        hair_scale = Vector3(0.45, 0.24, 0.42)
-    _add_avatar_part(avatar, "Hair", hair_mesh, Vector3(0, 1.77, 0), hair_scale, Color(0.08, 0.055, 0.04))
+        for i in range(7):
+            var x := -0.18 + float(i) * 0.06
+            _add_part(avatar, "Curl" + str(i), SphereMesh.new(), Vector3(x, 1.91 + (0.015 if i % 2 == 0 else 0.0), 0.07), Vector3(0.075, 0.09, 0.075), Color(0.055, 0.035, 0.025))
 
-func _add_avatar_part(parent: Node3D, part_name: String, mesh_resource: Mesh, part_position: Vector3, part_scale: Vector3, color: Color) -> void:
+    if outfit_name == "Streetwear":
+        _add_part(avatar, "JacketZip", BoxMesh.new(), Vector3(0, 1.03, 0.194), Vector3(0.018, 0.55, 0.012), Color(0.65, 0.67, 0.72))
+        _add_part(avatar, "JacketPocket", BoxMesh.new(), Vector3(0.20, 0.94, 0.18), Vector3(0.12, 0.12, 0.025), shirt_color)
+    elif outfit_name == "Pang-araw-araw":
+        _add_part(avatar, "ShirtLogo", SphereMesh.new(), Vector3(0.16, 1.13, 0.19), Vector3(0.045, 0.045, 0.018), Color(0.92, 0.84, 0.62))
+
+    return avatar
+
+func _add_part(parent: Node3D, part_name: String, mesh_resource: Mesh, part_position: Vector3, part_scale: Vector3, color: Color, rotation_degrees: Vector3 = Vector3.ZERO) -> void:
     var part := MeshInstance3D.new()
     part.name = part_name
     part.mesh = mesh_resource
     part.position = part_position
     part.scale = part_scale
+    part.rotation_degrees = rotation_degrees
     var material := StandardMaterial3D.new()
     material.albedo_color = color
-    material.roughness = 0.82
+    material.roughness = 0.78
     part.material_override = material
     parent.add_child(part)
 
