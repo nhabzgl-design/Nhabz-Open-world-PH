@@ -287,6 +287,23 @@ func _apply_avatar() -> void:
     player.add_child(avatar)
 
 func _build_avatar(skin_name: String, hair_name: String, outfit_name: String) -> Node3D:
+    # Prefer the approved, textured humanoid GLB when it has been added.
+    # Keep the procedural avatar only as a clearly temporary development fallback.
+    const REAL_CHARACTER_PATH := "res://assets/characters/filipino_male.glb"
+    if ResourceLoader.exists(REAL_CHARACTER_PATH):
+        var packed_character := load(REAL_CHARACTER_PATH) as PackedScene
+        if packed_character != null:
+            var imported_character := packed_character.instantiate() as Node3D
+            if imported_character != null:
+                imported_character.name = "FilipinoMaleCharacter"
+                var animation_player := imported_character.find_child("AnimationPlayer", true, false) as AnimationPlayer
+                if animation_player != null:
+                    if animation_player.has_animation("Idle"):
+                        animation_player.play("Idle")
+                    elif animation_player.get_animation_list().size() > 0:
+                        animation_player.play(animation_player.get_animation_list()[0])
+                return imported_character
+
     var avatar := Node3D.new()
     var skin_color := Color(0.55, 0.32, 0.20)
     if skin_name == "Kayumanggi":
