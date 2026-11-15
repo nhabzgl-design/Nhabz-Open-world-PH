@@ -1,0 +1,30 @@
+name: Godot Project Validation
+
+on:
+  push:
+    branches:
+      - feature/registration-character-creator
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Godot 4.3
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.3.0
+          use-dotnet: false
+          include-templates: false
+
+      - name: Import and parse project
+        run: godot --headless --editor --path . --quit
+
+      - name: Launch main scene briefly
+        run: godot --headless --path . --quit-after 3
