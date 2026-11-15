@@ -3,6 +3,9 @@
 Ito ay **Godot 4.x** starter project para sa Android-first 3D open-world life simulator.
 
 ## Kasalukuyang laman
+- Registration/login screen prototype (local device storage only; not cloud authentication)
+- Character creator prototype: character name, skin tone, hairstyle, outfit
+- Saved avatar is assembled in-game from simple 3D parts
 - 3D starter town prototype
 - Third-person player capsule at follow camera
 - Basic movement at jump
@@ -22,8 +25,8 @@ Ito ay **Godot 4.x** starter project para sa Android-first 3D open-world life si
 
 ## Mahalagang status
 Hindi pa ito final game at hindi pa APK. Ito ang unang playable foundation. Placeholder geometry pa ang mga gusali/NPC at wala pang:
-- account registration/login backend
-- avatar creator at cloud save
+- secure account registration/login backend (current UI is local-only prototype)
+- cloud avatar save and cross-device account sync
 - GPS permission/location integration
 - tunay na Philippine road/building dataset
 - vehicles, jobs, economy, interiors
@@ -31,7 +34,7 @@ Hindi pa ito final game at hindi pa APK. Ito ang unang playable foundation. Plac
 - optimized terrain streaming at final art
 
 ## Susunod na development milestones
-1. Avatar creator + account/authentication
+1. Connect secure cloud authentication and avatar persistence (after user review/approval)
 2. Philippine map data pipeline at region streaming
 3. Vehicle system (jeepney, tricycle, taxi, motorcycle)
 4. NPC schedules/interactions and life simulation
